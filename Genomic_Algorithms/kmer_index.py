@@ -3,6 +3,7 @@
 """kmer_index.py: A k-mer index for indexing a text."""
 
 __author__ = "Ben Langmead"
+# revised by Shengyuan Wnag
 
 import bisect
 
