@@ -1,0 +1,277 @@
+---
+title: "Genomic Capstone Report"
+author: "Shengyuan Wang"
+date: "4/27/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this project, I would like to answer the following question: is the gene expression level different between fetals and adults? To achieve this goal, I will re-perform the analysis which described in this paper: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC4281298/. In this research, authors collected 48 different samples and studied 6 different age groups from fetal to old. Since the data is quite big and some following steps are very time-consuming, I only collect 3 samples for each fetal (<0 years) and adult (20-50 years) group.
+
+## Getting the raw data
+
+I downloaded all 6 datasets from European Nucleotide Archive: https://www.ebi.ac.uk/ena/browser/home.
+Three of them were fetal datasets: SRR1554537, SRR1554566, SRR1554568. The rest three datasets were adult datasets: SRR1554536, SRR1554539, SRR1554534. Each file was paired-end library, and there were two fastq files for each sample. For example, SRR1554537 contains SRR1554537_1 and SRR1554537_2, each file was in fastq.gz format.
+
+## Align the samples to reference genome
+
+I used galaxy (https://usegalaxy.org/) to align the samples to its reference genome. First, the six datasets were uploaded to the server with the following settings: filetype was fastqsanger.gz; reference genome was hg19. Next, I used HISAT2 (Version 2.1.0+galaxy5) to make the alignment: the reference genome was built-in genome Human (Homo Sapiens)(b37) hg19; Paired-end two files for each sample. When the program was finished, there were two files: a BAM file contained alignment results, and a summary file described the alignment quality.
+
+## Quality control on the alignments
+
+I used FastQC (Version 0.72+galaxy1) on galaxy server to perform the quality control. Number of reads were in the range of 21,450,348 to 55,133,946. Percentage of GC were in range 46 to 51. All the 6 alignment rates were close to 99.7%, average quality per read were 37 or 38, which indicate dthe alignment results were good and the quality of reads were good.
+
+Next I would like to answer the questions: is the mapping rates similar for fetal and adult samples? First, I collected some information for each sample from: https://www.ncbi.nlm.nih.gov/sra?linkname=bioproject_sra_all&from_uid=245228. I selected "Send to - File - Download Full XML", then I used python to parse the file to a csv file "Week5_QC_data.csv".
+```{r, echo=FALSE}
+setwd("/Users/miotomato/Documents/Genomics Data Science Specialization/8. Genomic Data Science Capstone/Assignments")
+```
+```{r}
+f = read.csv("Week5_QC_data.csv")
+phenotype_table = f
+rownames(phenotype_table) = phenotype_table[,1]
+phenotype_table[,1] = NULL
+head(phenotype_table)
+write.table(phenotype_table, file="phenotype.txt", col.names=TRUE, row.names=TRUE)
+```
+
+The summary of the adult and fetal group was shown below:
+```{r}
+adult = f[1:3,]
+fetal = f[4:6,]
+
+summary(adult)
+```
+```{r}
+summary(fetal)
+```
+
+To determine whether the mapping rates and average quality score were different betweem adult and fetal group, I perfromed the student's t-test:
+```{r}
+t.test(fetal$alignment.rate, adult$alignment.rate)
+```
+```{r}
+t.test(fetal$Average.Quality.per.read, adult$Average.Quality.per.read)
+```
+
+The p-values were 0.7208 and 0.4226 for mapping rate and average quality score between the two groups, which indicate there was no signifiant different between the two groups.
+
+## Get feature counts
+
+To calculate the abundance of every gene in every sample, I used featureCounts (Version 1.6.4+galaxy1) on galaxy server, the gene annotation genome was hg19. The results were tables that was formatted with one gene per row with correponding counts. After performed on each sample, I merged the all 6 tabulars into one table by their gene_ids, and converted them to gene names.
+
+```{r echo=T, results='hide', message=FALSE, warning=FALSE}
+library('tidyverse')
+library(org.Hs.eg.db)
+library(annotate)
+# read feature count files
+tabular_files = list.files(path = "/Users/miotomato/Documents/Genomics Data Science Specialization/8. Genomic Data Science Capstone/Data/FeatureCount", pattern = "tabular$", full.names = TRUE)
+tabular_list = lapply(tabular_files, read.table)
+
+# merge the files by gene_id
+feature_count_files = Reduce(function(x, y) merge(x, y, by="V1"), tabular_list)
+colnames(feature_count_files) = c("gene_id", "SRR1554534", "SRR1554536", "SRR1554537",  "SRR1554539", "SRR1554566", "SRR1554568")
+feature_count_files = feature_count_files[c("gene_id", "SRR1554534", "SRR1554536", "SRR1554539", "SRR1554537", "SRR1554566", "SRR1554568")]
+
+# convert gene_id to gene_name
+for (i in 1:nrow(feature_count_files)){
+  feature_count_files[i,1] = lookUp(toString(feature_count_files[i,1]), 'org.Hs.eg', 'SYMBOL')
+}
+rownames(feature_count_files) = make.names(feature_count_files[,1], unique=TRUE)
+feature_count_files[,1] = NULL
+feature_table = feature_count_files
+```
+```{r}
+head(feature_table)
+write.table(feature_table, file="feature_counts.txt", sep='\t', row.names=TRUE, col.names=TRUE)
+```
+
+Here is a workflow for the entire galaxy jobs:
+
+![Figure 1. Galaxy workflow for alignment, QC and feature counting.](/Users/miotomato/Documents/Genomics Data Science Specialization/8. Genomic Data Science Capstone/Assignments/galaxy workflow.png)
+
+For the further analysis, I will use R only.
+
+## Exploratory analysis
+
+```{r echo=T, results='hide', message=FALSE, warning=FALSE}
+library(GenomicRanges)
+library(SummarizedExperiment)
+library(edgeR)
+```
+```{r}
+# remove low expression data
+feature_table = feature_table[rowMeans(feature_table) > 10, ]
+
+# create a SummarizedExperiment data
+col_data = phenotype_table
+row_data = relist(GRanges(), vector("list", length=nrow(feature_table)))
+se = SummarizedExperiment(assays = list(counts = feature_table), rowRanges = row_data, colData = col_data)
+se
+```
+```{r}
+# make a boxplot of the expression levels for each sample
+dge <- DGEList(counts = assay(se, "counts"), group = phenotype_table$age.group )
+dge$samples <- merge(dge$samples, as.data.frame(colData(se)), by = 0)
+boxplot(dge$counts)
+```
+
+Most of the data push to the bottom in the boxplot, so I perform log2 transformation on the data.
+```{r}
+log2_dge_count = log2(dge$counts + 1)
+boxplot(log2_dge_count)
+```
+
+Now the boxplot looked much better. It seems many outliers with extremly high expression in adult data but not in fetal data.
+
+Next I performed a principal component analysis.
+```{r}
+library(ggfortify)
+# perform PCA
+count_pca = prcomp(log2_dge_count, center=TRUE, scale=TRUE)
+dat = data.frame(X=count_pca$rotation[,1], Y=count_pca$rotation[,2], age_group=phenotype_table$age.group, RIN=phenotype_table$RIN)
+
+# scatterplot using PC1 and PC2, colored by RIN, shaped by age.group
+ggplot(dat, aes(x=X, y=Y, shape=age_group, color=RIN)) + geom_point(size=5) + xlab("PC1") + ylab("PC2")
+```
+
+Adult gene expression and fetal gene expression data were easily differentiate by PC1 and PC2. If we only use RIN, we cannot distinguish adult and fetal group.
+
+## Statistical analysis
+
+Next I will perform a statistical analysis to detect genes that are differentially expressed. The null and alternative hypothesis is:  
+H0: the mean gene expression level of each gene is equal between adult and fetal samples.  
+H1: the mean gene expression level of each gene is not equal between adult and fetal samples.  
+To test the hypothesis, I used limma package to make linear models for the assessment of differential expression.
+
+```{r echo=T, results='hide', message=FALSE, warning=FALSE}
+library(limma)
+library(edge)
+
+# make log2 transformation and remove low expression
+edata = assay(se)
+edata = log2(as.matrix(edata) + 1)
+edata = edata[rowMeans(edata) > 10, ]
+
+# fit the model by age.group and write results to a tab-delimited file with gene name, log2 fold-change, p-value and adjusted p-value
+mod = model.matrix(~ se$age.group)
+fit_limma = lmFit(edata,mod)
+ebayes_limma = eBayes(fit_limma)
+limma_toptable = topTable(ebayes_limma,number=dim(edata)[1])
+limma_table_output = limma_toptable[,c(1,4,5)]
+write.table(limma_table_output, file="dif_exp_genes.txt", sep='\t', row.names=TRUE, col.names=TRUE)
+```
+```{r}
+head(limma_table_output)
+```
+
+Then I made a volano plot, which is a plot of the fold change for age in each linear model versus log10 p-value.
+```{r}
+# make the volcano plot, mark those gene with p-value less than 0.05 as red
+with(limma_toptable, plot(logFC, -log10(adj.P.Val), pch=20, main="Volcano plot"))
+with(subset(limma_toptable, adj.P.Val < 0.05), points(logFC, -log10(adj.P.Val), pch=20, col="red"))
+```
+
+Those genes show in red dots were considered as differentially expressed. Next I summarized those genes:
+
+```{r}
+print(paste0("Genes differentially expressed: ", sum(limma_table_output$adj.P.Val < 0.05)))
+print(paste0("Genes differentially expressed and down-regulated from fetal to adult: ", sum(limma_table_output$adj.P.Val < 0.05 & limma_table_output$logFC > 1)))
+print(paste0("Genes differentially expressed and up-regulated from fetal to adult: ", sum(limma_table_output$adj.P.Val < 0.05 & limma_table_output$logFC < -1)))
+```
+
+There were total 3,864 genes differentially expressed betweem adult and fetal samples. Among those genes, 3,693 were down-regulated and 171 were up-regulated from fetal to adult.
+
+## Gene set analysis
+
+To do a further analysis, I would like to know:  
+1. If those differentially expressed genes between fetal and adult are associated with changes in H3K4me3 in their promoters.  
+2. Whether promoters for the list of differentially expressed genes are marked by H3K4me3 in liver.  
+
+First, fetal brain, adult prefrontal cortex and adult liver datasets from roadmap epigenomics project are downloaded using AnnotationHub and TxDb.Hsapiens.UCSC.hg19.knownGene.
+
+```{r echo=T, results='hide', message=FALSE, warning=FALSE}
+library(AnnotationHub)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+
+ah <- AnnotationHub()
+ah <- subset(ah, species == "Homo sapiens")
+ah_fetal <- query(ah, c("EpigenomeRoadMap", "H3K4me3", "E081"))
+ah_adult <- query(ah, c("EpigenomeRoadMap", "H3K4me3", "E073"))
+ah_liver <- query(ah, c("EpigenomeRoadMap", "H3K4me3", "E066"))
+
+# download narrowPeak datasets
+fetal_gr <- ah_fetal[[2]]
+adult_gr <- ah_adult[[2]]
+liver_gr <- ah_liver[[2]]
+```
+
+Notice I used gene name in the previous study, but roadmap uses entrez gene id, so I converted the gene name to the corresponding gene id.
+
+```{r echo=T, results='hide', message=FALSE, warning=FALSE}
+library(mygene)
+dif_exp_genes = row.names(limma_toptable[limma_toptable$adj.P.Val < 0.05,])
+dif_exp_gene_ids = queryMany(dif_exp_genes, scopes = "symbol", fields = "entrezgene", species = "human" )
+```
+
+Extract differentially expressed genes corresponding promoters.
+
+```{r}
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+txdb_genes <- genes(txdb)
+dif_exp_promoters <- promoters(txdb_genes[dif_exp_gene_ids$entrezgene %in% txdb_genes$gene_id])
+```
+
+Find the overlap between differentially expressed gene promoters and narrowPeak datasets.
+
+```{r}
+adult_perc_peak = length(subsetByOverlaps(adult_gr, dif_exp_promoters, ignore.strand=TRUE)) / length(adult_gr)
+fetal_perc_peak = length(subsetByOverlaps(fetal_gr, dif_exp_promoters, ignore.strand=TRUE)) / length(fetal_gr)
+liver_perc_peak = length(subsetByOverlaps(liver_gr, dif_exp_promoters, ignore.strand=TRUE)) / length(liver_gr)
+print(paste0("Percentage of differentially expressed gene in adult narrowpeaks: ", round(adult_perc_peak, 3)))
+print(paste0("Percentage of differentially expressed gene in fetal narrowpeaks: ", round(fetal_perc_peak, 3)))
+print(paste0("Percentage of differentially expressed gene in adult liver narrowpeaks: ", round(liver_perc_peak, 3)))
+```
+
+Notice that 36.5% of promoters which associate differentially expressed genes overlaps with fetal brain narrowpeak data, 24.3% overlaps with adult brain narrowpeak data, and 20.1% overlaps with adult liver narrowpeak data.
+
+To do a further analysis, I calculate the odds ratio for adult brain, fetal brain and adult liver by creating a 2*2 overlap matrix.
+
+```{r}
+odds_ratio = function(prom_counts, peak_counts, print=TRUE){
+overlapMat <- matrix(0,, ncol = 2, nrow = 2)
+colnames(overlapMat) <- c("in.peaks", "out.peaks")
+rownames(overlapMat) <- c("in.promoters", "out.promoter")
+
+prom <- reduce(prom_counts, ignore.strand = TRUE)
+peaks <- reduce(peak_counts)
+both <- intersect(prom, peaks)
+only.prom <- setdiff(prom, both)
+only.peaks <- setdiff(peaks, both)
+
+overlapMat[1,1] <- sum(width(both))
+overlapMat[1,2] <- sum(width(only.prom))
+overlapMat[2,1] <- sum(width(only.peaks))
+overlapMat[2,2] <- 1.5*10^9 - sum(overlapMat)
+
+oddsRatio <- overlapMat[1,1] * overlapMat[2,2] / (overlapMat[2,1] * overlapMat[1,2])
+return(oddsRatio)
+}
+print(paste0("Odds ratio in adult brain: ", round(odds_ratio(dif_exp_promoters, adult_gr), 2)))
+print(paste0("Odds ratio in fetal brain: ", round(odds_ratio(dif_exp_promoters, fetal_gr), 2)))
+print(paste0("Odds ratio in adult liver: ", round(odds_ratio(dif_exp_promoters, liver_gr), 2)))
+```
+
+The odds ratio of fetal brain sample is 18.43, indicate the overlap between fetal peaks and the promoters  which associate with differentially expressed genes is about 18 fold more enriched than we would expect. The odds ratio of adult brain is 16.08, which a little less than fetal sample. The odds ratio of adult liver sample is 12.45, which less than fetal and adult brain sample, indicates less promoters for the list of fetal and adult brain differentially expressed genes are marked by H3K4me3 in liver sample.
+
+## SessionInfo
+```{r}
+sessionInfo()
+```
+

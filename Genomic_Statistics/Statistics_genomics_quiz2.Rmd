@@ -1,0 +1,235 @@
+---
+title: "Statistics_genomics_quiz2"
+author: "Shengyuan Wang"
+date: "4/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##### 1. Load the Montgomery and Pickrell eSet:
+```{r message=FALSE, warning=FALSE}
+library(ballgown)
+library(Biobase)
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+##### What percentage of variation is explained by the 1st principal component in the data set if you:  
+1. Do no transformations?
+2. log2(data + 1) transform?
+3. log2(data + 1) transform and subtract row means?
+```{r}
+# No transformations
+svd1 = svd(edata)
+ori_pca = svd1$d^2/sum(svd1$d^2)
+ori_pca[1]
+```
+```{r}
+# log2 transform
+edata_log2 = log2(edata + 1)
+svd2 = svd(edata_log2)
+log2_pca = svd2$d^2/sum(svd2$d^2)
+log2_pca[1]
+```
+```{r}
+# log2 transform, subtract row means
+edata_centered = edata_log2 - rowMeans(edata_log2)
+svd3 = svd(edata_centered)
+centered_data_pca = svd3$d^2/sum(svd3$d^2)
+centered_data_pca[1]
+```
+
+##### 2. Load the Montgomery and Pickrell eSet:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+##### Perform the log2(data + 1) transform and subtract row means from the samples. Set the seed to 333 and use k-means to cluster the samples into two clusters. Use svd to calculate the singular vectors. What is the correlation between the first singular vector and the sample clustering indicator?
+```{r}
+edata_log2 = log2(edata + 1)
+edata_centered = edata_log2 - rowMeans(edata_log2)
+
+# use svd to calculate the singular vectors
+set.seed(333)
+svd1 = svd(edata_centered)
+
+edata_kmeans = kmeans(t(edata_centered), centers=2)
+cor.test(svd1$v[,1], edata_kmeans$cluster)
+```
+
+##### 3. Load the Bodymap data with the following command
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+edata = exprs(bm)
+pdata_bm=pData(bm)
+```
+##### Fit a linear model relating the first gene’s counts to the number of technical replicates, treating the number of replicates as a factor. Plot the data for this gene versus the covariate. Can you think of why this model might not fit well?
+```{r}
+# fit linear model
+lm1 = lm(edata[1,] ~ pdata_bm$num.tech.reps)
+
+# plot the data
+plot(pdata_bm$num.tech.reps,edata[1,])
+abline(lm1$coeff[1], lm1$coeff[2], col=2, lwd=3)
+```
+
+There are very few samples with more than 2 replicates so the estimates for those values will not be very good.  
+
+##### 4. Fit a linear model relating he first gene’s counts to the age of the person and the sex of the samples. What is the value and interpretation of the coefficient for age?
+```{r}
+# fit linear model
+lm2 = lm(edata[1,] ~ pdata_bm$age + pdata_bm$gender)
+summary(lm2)
+```
+This coefficient means that for each additional year of age, the count goes down by an average of 23.91 for a fixed sex.  
+
+##### 5. Load the Montgomery and Pickrell eSet:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+##### Perform the log2(data + 1) transform. Then fit a regression model to each sample using population as the outcome. Do this using the lm.fit function (hint: don't forget the intercept). What is the dimension of the residual matrix, the effects matrix and the coefficients matrix?
+```{r}
+edata = log2(edata + 1)
+
+# fit a regression model to each sample, using population as the outcome
+mod = model.matrix(~ pdata$population)
+fit = lm.fit(mod, t(edata))
+
+# dimension of the residual matrix
+dim(fit$residuals)
+```
+```{r}
+# dimension of the effects matrix
+dim(fit$effects)
+```
+```{r}
+# dimension of the coefficients matrix
+dim(fit$coefficients)
+```
+
+##### 6. Perform the log2(data + 1) transform. Then fit a regression model to each sample using population as the outcome. Do this using the lm.fit function (hint: don't forget the intercept). What is the effects matrix?
+```{r}
+?lm.fit
+```
+
+##### 7. Load the Bodymap data with the following command
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+edata = exprs(bm)
+pdata_bm=pData(bm)
+```
+##### Fit many regression models to the expression data where age is the outcome variable using the lmFit function from the limma package (hint: you may have to subset the expression data to the samples without missing values of age to get the model to fit). What is the coefficient for age for the 1,000th gene? Make a plot of the data and fitted values for this gene. Does the model fit well?
+```{r message=FALSE, warning=FALSE}
+library(devtools)
+library(Biobase)
+library(limma)
+library(edge)
+
+# subset the expression data to the samples without mimssing values of age
+pdata_bm = na.omit(pdata_bm)
+edata = edata[,rownames(pdata_bm), drop=FALSE]
+
+# fit many regression models to the expression data where age is the outcome
+mod_adj = model.matrix(~ pdata_bm$age)
+fit_limma = lmFit(edata,mod_adj)
+
+fit_limma$coefficients[1000,]
+```
+```{r}
+# make a plot of the 1,000th gene and fitted values
+intercept = fit_limma$coefficients[1000,][1]
+slope = fit_limma$coefficients[1000,][2]
+x = edata[1000,]*slope+intercept
+
+plot(x,pdata_bm$age)
+```
+
+The model doesn't fit well since there are two large outlying values and the rest of the values are near zero.  
+
+##### 8. Fit many regression models to the expression data where age is the outcome variable and tissue.type is an adjustment variable using the lmFit function from the limma package (hint: you may have to subset the expression data to the samples without missing values of age to get the model to fit). What is wrong with this model?
+```{r}
+pdata_bm$tissue.type
+```
+tissue.type has 18 levels but there are only 16 data points per gene, so this model can't fit a unique solution.  
+
+##### 9. Why is it difficult to distinguish the study effect from the population effect in the Montgomery Pickrell dataset from ReCount?
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+
+head(pdata)
+```
+The effects are difficult to distinguish because each study only measured one population.  
+
+##### 10. Load the Bodymap data with the following command
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+edata = exprs(bm)
+pdata_bm=pData(bm)
+```
+##### Set the seed using the command set.seed(33353) then estimate a single surrogate variable using the sva function after log2(data + 1) transforming the expression data, removing rows with rowMeans less than 1, and treating age as the outcome (hint: you may have to subset the expression data to the samples without missing values of age to get the model to fit). What is the correlation between the estimated surrogate for batch and age? Is the surrogate more highly correlated with race or gender?
+```{r message=FALSE, warning=FALSE}
+library(devtools)
+library(Biobase)
+library(sva)
+library(bladderbatch)
+library(snpStats)
+
+# preprocessing the data
+set.seed(33353)
+pheno = na.omit(pdata_bm)
+edata = edata[,rownames(pheno), drop=FALSE]
+edata = log2(edata + 1)
+edata = edata[rowMeans(edata) > 1,]
+
+# fit a sva model
+mod = model.matrix(~age, data=pheno)
+mod0 = model.matrix(~1, data=pheno)
+sva1 = sva(edata, mod,mod0, n.sv=2)
+
+# correlation between surrogate for batch and age
+cor(sva1$sv, pheno$age)
+```
+```{r}
+# correlation between surrogate for batch and race
+cor(sva1$sv, as.numeric(pheno$race))
+```
+```{r}
+# correlation between surrogate for batch and gender
+cor(sva1$sv, as.numeric(pheno$gender))
+```
+```{r}
+sessionInfo()
+```

@@ -1,0 +1,218 @@
+---
+title: "Statistics_genomics_quiz1"
+author: "Shengyuan Wang"
+date: "4/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##### 1. Reproducibility is defined informally as the ability to recompute data analytic results conditional on an observed data set and knowledge of the statistical pipeline used to calculate them Peng 2011, Science. Replicability of a study is the chance that a new experiment targeting the same scientific question will produce a consistent result Asendorpf 2013 European Journal of Personality.  
+
+##### Susan asks Joe for his data shared according to the data sharing plan discussed in the lectures. Which of the following are reasons the study may be reproducible, but not replicable?  
+
+##### Answer: 
+All the data and code are available but the codebook does not fully explain the experimental design and all protocols for patient recruitment.
+
+##### 2. Put the following code chunk at the top of an R markdown document called test.Rmd but set eval=TRUE
+```{r , eval=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
+Then create the following code chunks
+```{r eval=FALSE}
+x = rnorm(10)
+plot(x,pch=19,col="dodgerblue")
+```
+```{r eval=FALSE}
+y = rbinom(20,size=1,prob=0.5)
+table(y)
+```
+
+##### Answer: 
+The plot is random the first time you knit the document. It is identical to the first time the second time you knit the document. After removing the folders test_cache and test_files they generate new random versions.
+
+##### 3. Create a summarizedExperiment object with the following code
+```{r message=FALSE, warning=FALSE}
+library(Biobase)
+library(GenomicRanges)
+library(SummarizedExperiment)
+data(sample.ExpressionSet, package = "Biobase")
+se = makeSummarizedExperimentFromExpressionSet(sample.ExpressionSet)
+```
+Look up the help files for summarizedExperiment with the code summarizedExperiment. How do you access the genomic data for this object? How do you access the phenotype table? How do you access the feature data? What is the unique additional information provided by rowRanges(se)?
+```{r}
+??summarizedExperiment
+```
+
+Get the genomic table with assay(se), get the phenotype table with colData(se), get the feature data with rowRanges(se). rowRanges(se) gives information on the genomic location and structure of the measured 
+
+##### 4. Suppose that you have measured ChIP-Seq data from 10 healthy individuals and 10 metastatic cancer patients. For each individual you split the sample into two identical sub-samples and perform the ChIP-Seq experiment on each sub-sample. How can you measure (a) biological variability, (b) technical variability and (c) phenotype variability.
+
+##### Answer: 
+(a) By looking at variation across samples from 10 different individuals with cancer
+(b) By looking at variability between the measurements on the two sub-samples from the same sample and
+(c) by comparing the average measurements on the healthy individuals to the measurements on the individuals with cancer.
+
+##### 5. Load the Bottomly and the Bodymap data sets with the following code:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bottomly_eset.RData")
+load(file=con)
+close(con)
+bot = bottomly.eset
+pdata_bot=pData(bot)
+
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+pdata_bm=pData(bm)
+```
+Just considering the phenotype data what are some reasons that the Bottomly data set is likely a better experimental design than the Bodymap data? Imagine the question of interest in the Bottomly data is to compare strains and in the Bodymap data it is to compare tissues.
+
+##### Answer: 
+The covariates in the Bottomly data set (experiment number, lane number) are balanced with respect to strain. The covariates in the Bodymap data set (gender, age, number of technical replicates) are not balanced with respect to tissue.
+
+##### 6. What are some reasons why this plot is not useful for comparing the number of technical replicates by tissue (you may need to install the plotrix package).
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+pdata_bm=pData(bm)
+
+library(plotrix)
+pie3D(pdata_bm$num.tech.reps,labels=pdata_bm$tissue.type)
+```
+
+##### Answer:
+The "mixture" category is split across multiple wedges.
+
+##### 7. Load the Bottomly data:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+edata = exprs(bm)
+```
+Which of the following code chunks will make a heatmap of the 500 most highly expressed genes (as defined by total count), without re-ordering due to clustering? Are the highly expressed samples next to each other in sample order?
+
+##### Answer:
+```{r}
+row_sums = rowSums(edata)
+edata = edata[order(-row_sums),]
+index = 1:500
+heatmap(edata[index,],Rowv=NA,Colv=NA)
+```
+
+##### 8. Load the Bodymap data using the following code:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+pdata = pData(bm)
+edata = exprs(bm)
+```
+Make an MA-plot of the first sample versus the second sample using the log2 transform (hint: you may have to add 1 first) and the rlog transform from the DESeq2 package. How are the two MA-plots different? Which kind of genes appear most different in each plot?
+```{r}
+# make an MA-plot
+mm = log2(edata[,1]+1) - log2(edata[,2]+1)
+aa = log2(edata[,1]+1) + log2(edata[,2]+1)
+plot(aa,mm,col=2)
+```
+```{r}
+library(DESeq2)
+rld <- rlog(exprs(bm))
+
+y_rld = rld[,1] - rld[,2]
+x_rld = rld[,1] - rld[,2]
+plot(x_rld, y_rld, col = "blue", type = "p")
+```
+
+##### Answer:
+The plots look pretty similar, but the rlog transform seems to shrink the low abundance genes more. In both cases, the genes in the middle of the expression distribution show the biggest differences.
+
+##### 9. Load the Montgomery and Pickrell eSet:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+Cluster the data in three ways:
+
+1. With no changes to the data
+2. After filtering all genes with rowMeans less than 100
+3. After taking the log2 transform of the data without filtering
+Color the samples by which study they came from (Hint: consider using the function myplclust.R in the package rafalib available from CRAN and looking at the argument lab.col.)
+
+How do the methods compare in terms of how well they cluster the data by study? Why do you think that is?
+```{r}
+#With no changes to the data
+dist1 = dist(t(edata))
+hclust1 = hclust(dist1)
+
+par(mar=c(0, 4, 4, 2))
+plot(hclust1, hang = -1, main="origin", labels=FALSE)
+```
+
+```{r}
+#After filtering all genes with rowMeans less than 100
+low_genes = rowMeans(edata) < 100
+filter_edata = filter(edata, !low_genes)
+f_dist1 = dist(t(filter_edata))
+f_hclust1 = hclust(f_dist1)
+
+par(mar=c(0, 4, 4, 2))
+plot(f_hclust1, hang = -1, main="remove low expression", labels=FALSE)
+```
+
+```{r}
+#After taking the log2 transform of the data without filtering
+log_edata = log2(edata + 1)
+l_dist1 = dist(t(log_edata))
+l_hclust1 = hclust(l_dist1)
+
+par(mar=c(0, 4, 4, 2))
+plot(l_hclust1, hang=-1, main="perform log2 transform", labels=FALSE)
+```
+
+##### 10. Load the Montgomery and Pickrell eSet:
+```{r}
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/montpick_eset.RData")
+load(file=con)
+close(con)
+mp = montpick.eset
+pdata=pData(mp)
+edata=as.data.frame(exprs(mp))
+fdata = fData(mp)
+```
+Cluster the samples using k-means clustering after applying the log2 transform (be sure to add 1). Set a seed for reproducible results (use set.seed(1235)). If you choose two clusters, do you get the same two clusters as you get if you use the cutree function to cluster the samples into two groups? Which cluster matches most closely to the study labels?
+```{r}
+edata = log2(edata + 1)
+
+# perfrom k-means clustering
+set.seed(1235)
+k2 = kmeans(edata,centers=2)
+matplot(t(k2$centers),col=1:2,type="l",lwd=3)
+```
+```{r}
+dist1 = dist(t(edata))
+hclust1 = hclust(dist1)
+tree = cutree(hclust1, 2)
+
+par(mar=c(0, 4, 4, 2))
+plot(hclust1, tree, main="cutree")
+```
+
+##### Answer:
+They produce different answers. The k-means clustering matches study better. Hierarchical clustering would look better if we went farther down the tree but the top split doesn't perfectly describe the study variable.
+
+
+
