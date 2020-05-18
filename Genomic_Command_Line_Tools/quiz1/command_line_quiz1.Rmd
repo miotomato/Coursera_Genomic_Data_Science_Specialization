@@ -1,0 +1,86 @@
+---
+title: "Genomics_command_line_quiz1"
+author: "Shengyuan Wang"
+date: "4/4/2020"
+output: html_document
+---
+
+For all projects, you may use your own Unix-based system and, where applicable, ensure that you are running the version of the software specified in the assignments. Alternatively, you may use the VMBox virtual machine environment provided with the course materials. Instructions on how to download and use the environment can be found on the course web site.
+
+For the following questions, refer to the class workflow and use the data in the Online materials (‘gencommand_proj1_data.tar.gz’) to answer the questions. Assume you sequenced and assembled the genome of Malus domestica (apple), and performed gene annotation. You then collected samples and ran RNA-seq experiments to determine sets of genes that are expressed in the various tissues. This information was stored, respectively, in the following files: “apple.genome”, “apple.genes”, “apple.condition{A,B,C}”.
+
+NOTE: The apple genome and the apple gene annotations for this project were extracted from the Rosaceae Genome Database (RGD). Actual data have then been modified, and hence may not directly reflect the information in the original RGD records.
+
+##### 1. How many chromosomes are there in the genome?
+```{bash}
+grep -c ">" apple.genome
+```
+
+##### 2. How many genes?
+```{bash}
+cut -f1 apple.genes | sort -u | wc -l
+```
+
+##### 3. How many transcript variants?
+```{bash}
+cut -f2 apple.genes | sort -u | wc -l
+```
+
+##### 4. How many genes have a single splice variant?
+```{bash}
+cut -f1 apple.genes | uniq -c | grep " 1 " | wc -l
+```
+
+##### 5. How may genes have 2 or more splice variants?
+```{bash}
+cut -f1 apple.genes | uniq -c | grep -v " 1 " | wc -l
+```
+
+##### 6. How many genes are there on the ‘+’ strand?
+```{bash}
+cut -f1,4 apple.genes | sort | uniq -c | grep "+" | wc -l
+```
+
+##### 7. How many genes are there on the ‘-’ strand?
+```{bash}
+cut -f1,4 apple.genes | sort | uniq -c | grep "-" | wc -l
+```
+
+##### 8. How many genes are there on chromosome chr1?
+##### 9. How many genes are there on each chromosome chr2?
+##### 10. How many genes are there on each chromosome chr3?
+```{bash}
+cut -f1,3 apple.genes | sort -u | cut -f2 | sort | uniq -c
+```
+
+##### 11. How many transcripts are there on chr1?
+##### 12. How many transcripts are there on chr2?
+##### 13. How many transcripts are there on chr3?
+```{bash}
+cut -f2,3 apple.genes | sort -u | cut -f2 | sort | uniq -c
+```
+
+##### 14. How many genes are in common between condition A and condition B?
+```{bash}
+cut -f1 apple.conditionA | sort -u > sortA
+cut -f1 apple.conditionB | sort -u > sortB
+comm -1 -2 sortA sortB | wc -l
+```
+
+##### 15. How many genes are specific to condition A?
+```{bash}
+comm -2 -3 sortA sortB | wc -l
+```
+
+##### 16. How many genes are specific to condition B?
+```{bash}
+comm -1 -3 sortA sortB | wc -l
+```
+
+##### 17. How many genes are in common to all three conditions?
+```{bash}
+cut -f1 apple.conditionC | sort -u > sortC
+comm -1 -2 sortA sortB > AB_common
+comm -1 -2 AB_common sortC | wc -l
+```
+

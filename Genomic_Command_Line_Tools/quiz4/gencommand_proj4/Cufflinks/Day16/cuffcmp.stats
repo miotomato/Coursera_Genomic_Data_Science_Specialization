@@ -1,0 +1,28 @@
+# Cuffcompare v2.2.1 | Command line was:
+#cuffcompare -r ../../athal_genes.gtf -R transcripts.gtf
+#
+
+#= Summary for dataset: transcripts.gtf :
+#     Query mRNAs :      92 in      78 loci  (68 multi-exon transcripts)
+#            (11 multi-transcript loci, ~1.2 transcripts per locus)
+# Reference mRNAs :      91 in      62 loci  (82 multi-exon)
+# Super-loci w/ reference transcripts:       59
+#--------------------|   Sn   |  Sp   |  fSn |  fSp  
+        Base level: 	 85.7	 88.1	  - 	  - 
+        Exon level: 	 63.7	 78.1	 68.3	 83.8
+      Intron level: 	 75.8	 96.1	 77.2	 97.9
+Intron chain level: 	 36.6	 44.1	 48.8	 58.8
+  Transcript level: 	  0.0	  0.0	  0.0	  0.0
+       Locus level: 	 45.2	 35.9	 50.0	 38.5
+
+     Matching intron chains:      30
+              Matching loci:      28
+
+          Missed exons:      31/454	(  6.8%)
+           Novel exons:       7/370	(  1.9%)
+        Missed introns:      60/356	( 16.9%)
+         Novel introns:       4/281	(  1.4%)
+           Missed loci:       0/62	(  0.0%)
+            Novel loci:       4/78	(  5.1%)
+
+ Total union super-loci across all input datasets: 63 

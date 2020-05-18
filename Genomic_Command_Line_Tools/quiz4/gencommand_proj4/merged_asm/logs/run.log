@@ -1,0 +1,7 @@
+/usr/local/bin/cuffmerge -g athal_genes.gtf commands/GTFs.txt
+gtf_to_sam -F /media/sf_gencommand_proj4/Cufflinks/Day8/transcripts.gtf ./merged_asm/tmp/gtf2sam_fileWV8AAv
+gtf_to_sam -F /media/sf_gencommand_proj4/Cufflinks/Day16/transcripts.gtf ./merged_asm/tmp/gtf2sam_file46f0s9
+sort -k 3,3 -k 4,4n --temporary-directory=./merged_asm//tmp/ ./merged_asm/tmp/gtf2sam_fileWV8AAv ./merged_asm/tmp/gtf2sam_file46f0s9 > ./merged_asm/tmp/mergeSam_fileXTeGnN
+cufflinks -o ./merged_asm/ -F 0.05 -g athal_genes.gtf -q --overhang-tolerance 200 --library-type=transfrags -A 0.0 --min-frags-per-transfrag 0 --no-5-extend -p 1 ./merged_asm/tmp/mergeSam_fileXTeGnN
+cuffcompare -o tmp_meta_asm -C -G  -r athal_genes.gtf  ./merged_asm//transcripts.gtf
+cuffcompare -o tmp_meta_asm -C -G  -r athal_genes.gtf  ./merged_asm//merged.gtf

@@ -1,0 +1,26 @@
+segment_juncs v2.0.14 (4318)
+---------------------------
+[samopen] SAM header is present: 1 sequences.
+Loading reference sequences...
+	Loading 4...done
+	Loading ...done
+>> Performing segment-search:
+Loading left segment hits...
+done.
+	found 188 potential split-segment junctions
+	found 0 potential small deletions
+	found 0 potential small insertions
+>> Performing coverage-search:
+ Map covers 16722 bases
+ Map covers 16324 bases in sufficiently long segments
+ Map contains 398 good islands
+ 19774 are left looking bases
+ 19728 are right looking bases
+Collecting potential splice sites in islands
+reporting synthetic splice junctions...
+Examining donor-acceptor pairings in 4
+	found 211 potential junctions
+Reported 295 total potential splices
+Reporting 0 potential deletions...
+Reporting 0 potential insertions...
+Reporting potential fusions...

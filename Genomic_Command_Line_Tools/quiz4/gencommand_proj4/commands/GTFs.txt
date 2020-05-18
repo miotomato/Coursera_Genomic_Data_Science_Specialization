@@ -1,0 +1,6 @@
+/scratch0/florea/Coursera/L4/Cufflinks/Test1/transcripts.gtf
+/scratch0/florea/Coursera/L4/Cufflinks/Test2/transcripts.gtf
+/scratch0/florea/Coursera/L4/Cufflinks/Test3/transcripts.gtf
+/scratch0/florea/Coursera/L4/Cufflinks/Ctrl1/transcripts.gtf
+/scratch0/florea/Coursera/L4/Cufflinks/Ctrl2/transcripts.gtf
+/scratch0/florea/Coursera/L4/Cufflinks/Ctrl3/transcripts.gtf

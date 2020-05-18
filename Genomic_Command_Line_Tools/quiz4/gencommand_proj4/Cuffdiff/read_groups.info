@@ -1,0 +1,3 @@
+file	condition	replicate_num	total_mass	norm_mass	internal_scale	external_scale
+Tophat/Day8/accepted_hits.bam	q1	0	62678	61354.3	0.818737	1
+Tophat/Day16/accepted_hits.bam	q2	0	56432.5	61354.3	1.22269	1

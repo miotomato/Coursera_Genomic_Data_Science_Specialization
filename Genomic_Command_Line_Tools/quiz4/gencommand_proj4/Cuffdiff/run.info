@@ -1,0 +1,5 @@
+param	value
+cmd_line	cuffdiff merged_asm/merged.gtf Tophat/Day8/accepted_hits.bam Tophat/Day16/accepted_hits.bam -o Cuffdiff 
+version	2.2.1
+SVN_revision	4237
+boost_version	104700

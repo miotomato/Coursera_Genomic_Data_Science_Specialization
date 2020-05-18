@@ -1,0 +1,13 @@
+DATADIR=/scratch0/florea/Coursera/L4/Data/
+WORKDIR=/scratch0/florea/Coursera/L4/Tophat/
+ANNOT=/scratch0/annotation/allmix_nonpseudo.nonredund.gff3
+ANNOTIDX=/scratch0/annotation/allmix_nonpseudo_nonredund_bt2index
+BWT2IDX=/scratch0/genomes/hg38/hg38c
+
+mkdir -p $WORKDIR/Test1
+
+tophat2 -o $WORKDIR/Test1 -p 10 \
+        -G ANNOT --transcriptome-index $ANNOTIDX \
+        -r 120 --mate_std-dev 30 \
+        $BWT2IDX \
+        $DATADIR/Test1_1.fastq.gz $DATADIR/Test1_2.fastq.gz 

@@ -1,0 +1,267 @@
+---
+title: "command_line_quiz4"
+author: "Shengyuan Wang"
+date: "4/8/2020"
+output: html_document
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+For this project, it is recommended that you use the VMBox virtual environment provided with the Course package and the tools therein. You may also use your own system and software, however make sure that appropriate versions are installed. The answers are compatible with the following versions of the software: samtools v.1.2, bowtie2 v.2.2.2, tophat v.2.0.14, and cufflinks/ cuffmerge/ cuffcompare/ cuffdiff v.2.2.1.
+
+You are performing an RNA-seq experiment to determine genes that are differentially expressed at different stages in the development of Arabidopsis thaliana shoot apical meristem. You collected samples at day 8 and day 16 (files “Day8.fastq” and “Day16.fastq”), extracted and sequenced the cellular mRNA, and are now set to perform the bioinformatics analysis. The reference genome you will need for the analysis is “athal_chr.fa” and the reference gene annotations are in “athal_genes.gtf”. Use default parameters unless otherwise specified. Sample command files that you can modify to create your own pipeline are provided in the file “commands.tar.gz”. All files are provided in the archive gencommand_proj4.tar.gz.
+
+NOTE: The genome and annotation data were obtained and modified from the Arabidopsis Information Resources (TAIR) Database, and the RNA-seq reads were extracted from GenBank’s Short Read Archive (SRA).
+
+Create a bowtie index of the genome using bowtie2-build, with the prefix ‘athal’. Include a copy of the reference genome with the name “athal.fa” in the index directory.
+
+Apply to question 1-10:  
+Align both RNA-seq data sets to the reference genome using tophat. Analyze the results to answer the following questions. If multiple answers are required for one question, separate the answers with a space (e.g., 1000 2000).
+
+Apply to question 11-20:  
+Assemble the aligned RNA-seq reads into genes and transcripts using cufflinks. Use the labels ‘Day8’ and ‘Day16’, respectively, when creating identifiers. For this portion of the analysis, answer the following questions.
+
+Apply to question 21-30:  
+Run cuffcompare on the resulting cufflinks transcripts, using the reference gene annotations provided and selecting the option '-R' to consider only the reference transcripts that overlap some input transfrag. For this step, using the *.tmap files answer the following, for both sets.
+
+Apply to question 31-35:  
+Perform the differential gene expression analysis. For this, in a first stage run cuffmerge using the provided annotation to merge and reconcile the two sets of cufflinks transcripts. Make a note of the resulting file, ‘merged.gtf’. In a second step, use cufdiff to perform the differential expression analysis.
+
+NOTE: Note that in general at least three replicates per condition are required to establish statistical significance. The single replicate example is provided here only to illustrate the analysis.
+
+##### 1. How many alignments were produced for the ‘Day8’ RNA-seq data set?
+```{bash}
+mkdir Tophat
+mkdir Tophat/Day8
+mkdir Tophat/Day16
+mkdir athal
+bowtie2-build athal.fa athal/athal
+cp athal_chr.fa athal/
+tophat –o Tophat/Day8/ athal/athal Day8.fastq
+tophat –o Tophat/Day16 athal/athal Day16.fastq
+samtools view Tophat/Day8/accepted_hits.bam | cut -f7 | wc -l
+```
+\#\# 63845
+
+##### 2. How many alignments were produced for the ‘Day16’ RNA-seq data set?
+```{bash}
+samtools view Tophat/Day16/accepted_hits.bam | cut -f7 | wc -l
+```
+\#\# 58398
+
+##### 3. How many reads were mapped in ‘Day8’ RNA-seq data set?
+```{bash}
+head Tophat/Day8/align_summary.txt
+```
+Reads:
+          Input     :     63573
+           Mapped   :     63489 (99.9% of input)
+            of these:       356 ( 0.6%) have multiple alignments (0 have >20)
+99.9% overall read mapping rate.
+
+\#\# 63489
+
+##### 4. How many reads were mapped in ‘Day16’ RNA-seq data set?
+```{bash}
+head Tophat/Day16/align_summary.txt
+```
+Reads:
+          Input     :     57985
+           Mapped   :     57951 (99.9% of input)
+            of these:       447 ( 0.8%) have multiple alignments (0 have >20)
+99.9% overall read mapping rate.
+
+\#\# 57951
+
+##### 5. How many reads were uniquely aligned in ‘Day8’ RNA-seq data set?
+\#\# 63133
+
+##### 6. How many reads were uniquely aligned in ‘Day16’ RNA-seq data set?
+\#\# 57504
+
+##### 7. How many spliced alignments were reported for ‘Day8’ RNA-seq data set?
+```{bash}
+samtools view Tophat/Day8/accepted_hits.bam | cut -f6 | grep "N" | wc -l
+```
+\#\# 8596
+
+##### 8. How many spliced alignments were reported for ‘Day16’ RNA-seq data set?
+```{bash}
+samtools view Tophat/Day16/accepted_hits.bam | cut -f6 | grep "N" | wc -l
+```
+\#\# 10695
+
+##### 9. How many reads were left unmapped from ‘Day8’ RNA-seq data set?
+\#\# 84
+
+##### 10. How many reads were left unmapped from ‘Day16’ RNA-seq data set?
+\#\# 34
+
+##### 11. How many genes were generated by cufflinks for Day8?
+```{bash}
+mkdir Cufflinks
+mkdir Cufflinks/Day8
+mkdir Cufflinks/Day16
+
+cufflinks -L Day8 Tophat/Day8/accepted_hits.bam -o Cufflinks/Day8
+cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ";" -f1 | sort -u | wc -l
+```
+\#\# 186
+
+##### 12. How many genes were generated by cufflinks for Day16?
+```{bash}
+cufflinks -L Day16 Tophat/Day16/accepted_hits.bam -o Cufflinks/Day16
+cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ";" -f1 | sort -u | wc -l
+```
+\#\# 80
+
+##### 13. How many transcripts were reported for Day8?
+```{bash}
+cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ";" -f2 | sort -u | wc -l
+```
+\#\# 192
+
+##### 14. How many transcripts were reported for Day16?
+```{bash}
+cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ";" -f2 | sort -u | wc -l
+```
+\#\# 92
+
+##### 15. How many single transcript genes were produced for Day8?
+```{bash}
+cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ' ' -f2,4 | sort -u | cut -d ' ' -f1 | sort | uniq -c |  grep -c " 1 "
+```
+\#\# 180
+
+##### 16. How many single transcript genes were produced for Day16?
+```{bash}
+cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ' ' -f2,4 | sort -u | cut -d ' ' -f1 | sort | uniq -c |  grep -c " 1 "
+```
+\#\# 69
+
+##### 17. How many single-exon transcripts were in the Day8 set?
+```{bash}
+cat Cufflinks/Day8/transcripts.gtf | cut -f9 | cut -d ' ' -f4 | sort | uniq -c |  grep -c " 2 "
+```
+\#\# 119
+
+##### 18. How many single-exon transcripts were in the Day16 set?
+```{bash}
+cat Cufflinks/Day16/transcripts.gtf | cut -f9 | cut -d ' ' -f4 | sort | uniq -c |  grep -c " 2 "
+```
+\#\# 24
+
+##### 19. How many multi-exon transcripts were in the Day8 set?
+\#\# 73
+
+##### 20. How many multi-exon transcripts were in the Day16 set?
+\#\# 68
+
+##### 21. How many cufflinks transcripts fully reconstruct annotation transcripts in Day8?
+```{bash}
+cuffcompare >& cuffcompare.log
+cd Cufflinks/Day8
+cuffcompare -r ../../athal_genes.gtf -R transcripts.gtf
+cat cuffcmp.transcripts.gtf.tmap | cut -f3 | grep "=" | wc -l
+```
+\#\# 16
+
+##### 22. How many cufflinks transcripts fully reconstruct annotation transcripts in Day16?
+```{bash}
+cd ../Day16
+cuffcompare -r ../../athal_genes.gtf -R transcripts.gtf
+cat cuffcmp.transcripts.gtf.tmap | cut -f3 | grep "=" | wc -l
+```
+\#\# 36
+
+##### 23. How many splice variants does the gene AT4G20240 have in the Day8 sample?
+```{bash}
+cd ../Day8
+cat cuffcmp.transcripts.gtf.tmap | grep "AT4G20240" | wc -l
+```
+\#\# 2
+
+##### 24. How many splice variants does the gene AT4G20240 have in the Day16 sample?
+```{bash}
+cd ../Day16
+cat cuffcmp.transcripts.gtf.tmap | grep "AT4G20240" | wc -l
+```
+\#\# 0
+
+##### 25. How many cufflinks transcripts are partial reconstructions of reference transcripts (‘contained’)? (Day8)
+```{bash}
+cd ../Day8
+cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "c" | wc -l
+```
+\#\# 133
+
+##### 26. How many cufflinks transcripts are partial reconstructions of reference transcripts (‘contained’)? (Day16)
+```{bash}
+cd ../Day16
+cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "c" | wc -l
+```
+\#\# 21
+
+##### 27. How many cufflinks transcripts are novel splice variants of reference genes? (Day8)
+```{bash}
+cd ../Day8
+cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "j" | wc -l
+```
+\#\# 14
+
+##### 28. How many cufflinks transcripts are novel splice variants of reference genes? (Day16)
+```{bash}
+cd ../Day16
+cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "j" | wc -l
+```
+\#\# 22
+
+##### 29. How many cufflinks transcripts were formed in the introns of reference genes? (Day8)
+```{bash}
+cd ../Day8
+cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "i" | wc -l
+```
+\#\# 4
+
+##### 30. How many cufflinks transcripts were formed in the introns of reference genes? (Day16)
+```{bash}
+cd ../Day16
+cat cuffcmp.transcripts.gtf.tmap | cuf -f3 | grep "i" | wc -l
+```
+\#\# 1
+
+##### 31. How many genes (loci) were reported in the merged.gtf file?
+```{bash}
+# rewrite the GTFs.txt with the location of gtf files which would like merged
+cuffmerge -g athal_genes.gtf commands/GTFs.txt
+cat merged_asm/merged.gtf | cut -f9 | cut -d ' ' -f2 | sort -u | wc -l
+```
+\#\# 129
+
+##### 32. How many transcripts?
+```{bash}
+cat merged_asm/merged.gtf | cut -f9 | cut -d ' ' -f4 | sort -u | wc -l
+```
+\#\# 200
+
+##### 33. How many genes total were included in the gene expression report from cuffdiff?
+```{bash}
+mkdir Cuffdiff
+cuffdiff merged_asm/merged.gtf Tophat/Day8/accepted_hits.bam Tophat/Day16/accepted_hits.bam -o Cuffdiff
+cat Cuffdiff/gene_exp.diff | wc -l
+```
+\#\# 129
+
+##### 34. How many genes were detected as differentially expressed?
+```{bash}
+cat Cuffdiff/gene_exp.diff | cut -f14 | grep "yes" | wc -l
+```
+\#\# 4
+
+##### 35. How many transcripts were differentially expressed between the two samples?
+```{bash}
+cat Cuffdiff/isoform_exp.diff | cut -f14 | grep "yes" | wc -l
+```
+\#\# 5

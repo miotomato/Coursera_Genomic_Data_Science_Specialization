@@ -1,0 +1,4 @@
+Warning: Could not connect to update server to verify current version. Please check at the Cufflinks website (http://cufflinks.cbcb.umd.edu).
+open: No such file or directory
+File Tophat/Day8/accepted_hits.bam doesn't appear to be a valid BAM file, trying SAM...
+Error: cannot open alignment file Tophat/Day8/accepted_hits.bam for reading

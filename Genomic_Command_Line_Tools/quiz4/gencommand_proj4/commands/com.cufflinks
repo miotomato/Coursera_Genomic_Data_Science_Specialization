@@ -1,0 +1,5 @@
+THDIR=/scratch0/florea/Coursera/L4/Tophat/
+WORKDIR=/scratch0/florea/Coursera/Cufflinks
+
+mkdir -p $WORKDIR/Test1
+cd $WORKDIR/Test1; cufflinks2 -L BJ-A0Z2 -p 8 $THDIR/Test1/accepted_hits.bam

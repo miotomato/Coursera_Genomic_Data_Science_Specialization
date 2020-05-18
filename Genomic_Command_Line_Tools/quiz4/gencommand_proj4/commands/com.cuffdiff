@@ -1,0 +1,10 @@
+WORKDIR=/scratch0/florea/Coursera/L4/
+THDIR=/scratch0/florea/Coursera/L4/Tophat/
+ANNOT=/scratch0/annotation/allmix_nonpseudo.nonredund.gff3
+
+cuffmerge -g $ANNOT -p 8 -o $WORKDIR/Cuffmerge $WORKDIR/Cuffmerge/GTFs.txt
+
+cuffdiff2 -o $WORKDIR/Cuffdiff -p 10 $WORKDIR/Cuffmerge/merged.gtf \
+          $THDIR/Test1/accepted_hits.bam,$THDIR/Test2/accepted_hits.bam,$THDIR/Test3/accepted_hits.bam \
+          $THDIR/Ctrl1/accepted_hits.bam,$THDIR/Ctrl2/accepted_hits.bam,$THDIR/Ctrl3/accepted_hits.bam
+           
